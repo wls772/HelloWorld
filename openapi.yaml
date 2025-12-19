@@ -1,0 +1,224 @@
+openapi: 3.0.0
+info:
+  title: 新浪财经新闻插件
+  description: 爬取新浪财经新闻的插件，支持根据股票代码查询相关新闻。可以查询上海（sh）和深圳（sz）股票的相关财经新闻。
+  version: 1.0.0
+  contact:
+    name: 插件开发者
+
+servers:
+  # 在扣子平台添加插件时，请将下面的地址替换为你的实际服务器地址
+  # 本地测试：使用 ngrok 等内网穿透工具，例如：https://abc123.ngrok.io
+  # 云服务器：填写你的域名或IP，例如：https://your-domain.com 或 http://your-ip:8000
+  # 免费平台：Railway/Render/Vercel 等提供的域名
+  - url: https://your-domain.com
+    description: 请替换为你的实际服务器地址（扣子平台需要公网可访问的地址）
+
+paths:
+  /:
+    get:
+      summary: 获取插件信息
+      description: 返回插件的基本信息
+      operationId: getPluginInfo
+      tags:
+        - 插件信息
+      responses:
+        '200':
+          description: 成功返回插件信息
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  name:
+                    type: string
+                    description: 插件名称
+                  version:
+                    type: string
+                    description: 插件版本
+                  description:
+                    type: string
+                    description: 插件描述
+
+  /health:
+    get:
+      summary: 健康检查
+      description: 检查插件服务是否正常运行
+      operationId: healthCheck
+      tags:
+        - 健康检查
+      responses:
+        '200':
+          description: 服务正常
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+                  timestamp:
+                    type: string
+                    format: date-time
+
+  /news:
+    post:
+      summary: 获取新浪财经新闻（POST方式）
+      description: 根据股票代码爬取新浪财经相关新闻。股票代码格式：sh600000（上海）或sz000001（深圳）
+      operationId: getSinaNews
+      tags:
+        - 新闻查询
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - symbol
+              properties:
+                symbol:
+                  type: string
+                  description: 股票代码，格式：sh600000（上海）或sz000001（深圳）
+                  example: sh600000
+                limit:
+                  type: integer
+                  description: 返回新闻数量，默认5条，最大20条
+                  minimum: 1
+                  maximum: 20
+                  default: 5
+                  example: 5
+      responses:
+        '200':
+          description: 成功返回新闻列表
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NewsResponse'
+        '400':
+          description: 请求参数错误
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: 未找到相关新闻
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: 服务器内部错误
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    get:
+      summary: 获取新浪财经新闻（GET方式）
+      description: 根据股票代码爬取新浪财经相关新闻。股票代码格式：sh600000（上海）或sz000001（深圳）
+      operationId: getSinaNewsGet
+      tags:
+        - 新闻查询
+      parameters:
+        - name: symbol
+          in: query
+          required: true
+          description: 股票代码，格式：sh600000（上海）或sz000001（深圳）
+          schema:
+            type: string
+            example: sh600000
+        - name: limit
+          in: query
+          required: false
+          description: 返回新闻数量，默认5条，最大20条
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 20
+            default: 5
+            example: 5
+      responses:
+        '200':
+          description: 成功返回新闻列表
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NewsResponse'
+        '400':
+          description: 请求参数错误
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: 未找到相关新闻
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: 服务器内部错误
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+components:
+  schemas:
+    NewsArticle:
+      type: object
+      description: 新闻文章
+      properties:
+        title:
+          type: string
+          description: 新闻标题
+          example: "某公司发布重要公告"
+        url:
+          type: string
+          description: 新闻链接
+          format: uri
+          example: "https://vip.stock.finance.sina.com.cn/corp/view/vCB_AllNewsStock.php?symbol=sh600000"
+        date:
+          type: string
+          description: 新闻日期（可选）
+          format: date
+          example: "2024-01-15"
+          nullable: true
+
+    NewsResponse:
+      type: object
+      description: 新闻查询响应
+      properties:
+        symbol:
+          type: string
+          description: 查询的股票代码
+          example: sh600000
+        news_count:
+          type: integer
+          description: 返回的新闻数量
+          example: 5
+        articles:
+          type: array
+          description: 新闻列表
+          items:
+            $ref: '#/components/schemas/NewsArticle'
+
+    Error:
+      type: object
+      description: 错误信息
+      properties:
+        detail:
+          type: string
+          description: 错误详情
+          example: "股票代码格式错误"
+
+tags:
+  - name: 插件信息
+    description: 插件基本信息相关接口
+  - name: 健康检查
+    description: 健康检查相关接口
+  - name: 新闻查询
+    description: 新闻查询相关接口
+
